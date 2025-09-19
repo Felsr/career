@@ -2,18 +2,37 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function POST(req: Request) {
-  const { email, password, type } = await req.json();
+  const { email, password } = await req.json();
 
-  let result;
-  if (type === "signup") {
-    result = await supabase.auth.signUp({ email, password });
-  } else {
-    result = await supabase.auth.signInWithPassword({ email, password });
+  // ✅ Check required fields
+  if (!email || !password) {
+    return NextResponse.json(
+      { success: false, error: "Email and password are required" },
+      { status: 400 }
+    );
   }
 
-  if (result.error) {
-    return NextResponse.json({ error: result.error.message }, { status: 400 });
+  // ✅ Call Supabase login
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  // ✅ Handle errors
+  if (error) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 401 }
+    );
   }
 
-  return NextResponse.json({ user: result.data.user });
+  // ✅ Make sure user exists
+  if (!data || !data.user) {
+    return NextResponse.json(
+      { success: false, error: "Invalid login credentials" },
+      { status: 401 }
+    );
+  }
+
+  return NextResponse.json({ success: true, user: data.user });
 }
